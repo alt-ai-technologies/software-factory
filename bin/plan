@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CLONE_DIR="${1:?Usage: plan <clone-dir> [feature-name]}"
+FEATURE_NAME="${2:-}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+AGENT_SYSTEM_DIR="$(dirname "$SCRIPT_DIR")"
+WORKSPACE="$(dirname "$AGENT_SYSTEM_DIR")"
+PROMPT_FILE="${AGENT_SYSTEM_DIR}/prompts/plan.md"
+
+# shellcheck source=../lib/allowed-tools.sh
+source "${AGENT_SYSTEM_DIR}/lib/allowed-tools.sh"
+
+# shellcheck source=../lib/agent-session.sh
+source "${AGENT_SYSTEM_DIR}/lib/agent-session.sh"
+
+# --- Resolve clone dir ---
+if [[ ! -d "$CLONE_DIR" ]] && [[ -d "${WORKSPACE}/${CLONE_DIR}" ]]; then
+    CLONE_DIR="${WORKSPACE}/${CLONE_DIR}"
+fi
+
+if [[ ! -d "$CLONE_DIR" ]]; then
+    echo "ERROR: Directory not found at $CLONE_DIR"
+    exit 1
+fi
+
+# Canonicalize to absolute path so cleanup works after cd
+CLONE_DIR="$(cd "$CLONE_DIR" && pwd)"
+
+if [[ ! -f "$PROMPT_FILE" ]]; then
+    echo "ERROR: Prompt not found at $PROMPT_FILE"
+    exit 1
+fi
+
+# --- Update feature name in session if provided ---
+if [[ -n "$FEATURE_NAME" ]]; then
+    write_agent_session "$CLONE_DIR" "feature=${FEATURE_NAME}"
+fi
+
+# --- Set tab title ---
+eval "$(read_agent_session "$CLONE_DIR")" 2>/dev/null || true
+TAB_LABEL="${SESSION_feature:-$(basename "$CLONE_DIR")}"
+set_tab_title "PLAN: ${TAB_LABEL}"
+
+# --- Update session marker to running ---
+write_agent_session "$CLONE_DIR" state=running agent=plan "pid=$$" "started_at=$(date +%s)"
+
+# --- Trap: update marker and reset tab on exit ---
+AGENT_EXIT_CODE=0
+cleanup() {
+    if [[ "$AGENT_EXIT_CODE" -eq 0 ]]; then
+        write_agent_session "$CLONE_DIR" state=done "pid=" "finished_at=$(date +%s)"
+    else
+        write_agent_session "$CLONE_DIR" state=interrupted "pid=" "finished_at=$(date +%s)"
+    fi
+    reset_tab_title
+}
+trap cleanup EXIT
+
+# --- Build user prompt ---
+if [[ -n "$FEATURE_NAME" ]]; then
+    USER_PROMPT="I want to plan '${FEATURE_NAME}'. The plan should end up at docs/${FEATURE_NAME}.md. Let's get started — what do you need to know?"
+else
+    USER_PROMPT="I want to plan a feature. Before we start, ask me the name of what we're building. The plan should end up at docs/<feature-name>.md. Let's get started — what do you need to know?"
+fi
+
+echo "==> Starting plan session in $CLONE_DIR"
+echo ""
+
+cd "$CLONE_DIR"
+set +e
+claude \
+    --permission-mode acceptEdits \
+    --append-system-prompt "$(cat "$PROMPT_FILE")" \
+    --allowedTools "$GIT_TOOLS $SHELL_TOOLS $CODEX_TOOLS $FILE_TOOLS" \
+    "$USER_PROMPT"
+AGENT_EXIT_CODE=$?
+set -e

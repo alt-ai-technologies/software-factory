@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TARGET_DIR="${1:?Usage: task <directory>}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+AGENT_SYSTEM_DIR="$(dirname "$SCRIPT_DIR")"
+WORKSPACE="$(dirname "$AGENT_SYSTEM_DIR")"
+PROMPT_FILE="${AGENT_SYSTEM_DIR}/prompts/task-agent.md"
+
+# shellcheck source=../lib/allowed-tools.sh
+source "${AGENT_SYSTEM_DIR}/lib/allowed-tools.sh"
+
+# shellcheck source=../lib/agent-session.sh
+source "${AGENT_SYSTEM_DIR}/lib/agent-session.sh"
+
+# --- Resolve target dir ---
+if [[ ! -d "$TARGET_DIR" ]] && [[ -d "${WORKSPACE}/${TARGET_DIR}" ]]; then
+    TARGET_DIR="${WORKSPACE}/${TARGET_DIR}"
+fi
+
+if [[ ! -d "$TARGET_DIR" ]]; then
+    echo "ERROR: Directory not found at $TARGET_DIR"
+    exit 1
+fi
+
+# Canonicalize to absolute path so cleanup works after cd
+TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
+
+if [[ ! -f "$PROMPT_FILE" ]]; then
+    echo "ERROR: Prompt not found at $PROMPT_FILE"
+    exit 1
+fi
+
+# --- Set tab title ---
+eval "$(read_agent_session "$TARGET_DIR")" 2>/dev/null || true
+TAB_LABEL="${SESSION_feature:-$(basename "$TARGET_DIR")}"
+set_tab_title "TASK: ${TAB_LABEL}"
+
+# --- Update session marker to running ---
+write_agent_session "$TARGET_DIR" state=running agent=task "pid=$$" "started_at=$(date +%s)"
+
+# --- Trap: update marker and reset tab on exit ---
+AGENT_EXIT_CODE=0
+cleanup() {
+    if [[ "$AGENT_EXIT_CODE" -eq 0 ]]; then
+        write_agent_session "$TARGET_DIR" state=done "pid=" "finished_at=$(date +%s)"
+    else
+        write_agent_session "$TARGET_DIR" state=interrupted "pid=" "finished_at=$(date +%s)"
+    fi
+    reset_tab_title
+}
+trap cleanup EXIT
+
+# --- Launch ---
+echo "==> Starting task session in $TARGET_DIR"
+echo ""
+
+cd "$TARGET_DIR"
+set +e
+claude \
+    --permission-mode acceptEdits \
+    --append-system-prompt "$(cat "$PROMPT_FILE")" \
+    --allowedTools "$GIT_TOOLS $PYTHON_TOOLS $SHELL_TOOLS $FILE_TOOLS $CODEX_TOOLS" \
+    "I have a small task for this repo. Ask me what I want to build."
+AGENT_EXIT_CODE=$?
+set -e

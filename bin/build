@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CLONE_DIR="${1:?Usage: build <clone-dir>}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+AGENT_SYSTEM_DIR="$(dirname "$SCRIPT_DIR")"
+WORKSPACE="$(dirname "$AGENT_SYSTEM_DIR")"
+
+# shellcheck source=../lib/allowed-tools.sh
+source "${AGENT_SYSTEM_DIR}/lib/allowed-tools.sh"
+
+# shellcheck source=../lib/agent-session.sh
+source "${AGENT_SYSTEM_DIR}/lib/agent-session.sh"
+
+# --- Resolve clone dir ---
+if [[ ! -d "$CLONE_DIR" ]] && [[ -d "${WORKSPACE}/${CLONE_DIR}" ]]; then
+    CLONE_DIR="${WORKSPACE}/${CLONE_DIR}"
+fi
+
+if [[ ! -d "$CLONE_DIR" ]]; then
+    echo "ERROR: Directory not found at $CLONE_DIR"
+    exit 1
+fi
+
+# Canonicalize to absolute path so cleanup works after cd
+CLONE_DIR="$(cd "$CLONE_DIR" && pwd)"
+
+# --- Prompt and tools ---
+PROMPT_FILE="${AGENT_SYSTEM_DIR}/prompts/build-agent.md"
+ALLOWED_TOOLS="$GIT_TOOLS $PYTHON_TOOLS $CODEX_TOOLS $SHELL_TOOLS $FILE_TOOLS"
+
+if [[ ! -f "$PROMPT_FILE" ]]; then
+    echo "ERROR: Prompt not found at $PROMPT_FILE"
+    exit 1
+fi
+
+# --- Set tab title ---
+eval "$(read_agent_session "$CLONE_DIR")" 2>/dev/null || true
+TAB_LABEL="${SESSION_feature:-$(basename "$CLONE_DIR")}"
+set_tab_title "BUILD: ${TAB_LABEL}"
+
+# --- Update session marker to running ---
+write_agent_session "$CLONE_DIR" state=running agent=build "pid=$$" "started_at=$(date +%s)"
+
+# --- Trap: update marker and reset tab on exit ---
+AGENT_EXIT_CODE=0
+cleanup() {
+    if [[ "$AGENT_EXIT_CODE" -eq 0 ]]; then
+        write_agent_session "$CLONE_DIR" state=done "pid=" "finished_at=$(date +%s)"
+    else
+        write_agent_session "$CLONE_DIR" state=interrupted "pid=" "finished_at=$(date +%s)"
+    fi
+    reset_tab_title
+}
+trap cleanup EXIT
+
+# --- Launch ---
+echo "==> Launching build agent in $CLONE_DIR"
+echo "    Prompt: $PROMPT_FILE"
+echo ""
+
+cd "$CLONE_DIR"
+set +e
+claude \
+    --permission-mode acceptEdits \
+    --append-system-prompt "$(cat "$PROMPT_FILE")" \
+    --allowedTools "$ALLOWED_TOOLS" \
+    "Look in the docs/ directory for the relevant feature spec. Read it, understand the codebase, and build the feature."
+AGENT_EXIT_CODE=$?
+set -e
+
+echo ""
+echo "==> Build agent exited."
+echo "    Review commits: cd $CLONE_DIR && git log --oneline main..HEAD"
+echo "    Push when ready: cd $CLONE_DIR && git push -u origin HEAD"

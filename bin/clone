@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_NAME="${1:?Usage: clone <repo-name> [feature-name]}"
+FEATURE_NAME="${2:-}"
+WORKSPACE="$(pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+AGENT_SYSTEM_DIR="$(dirname "$SCRIPT_DIR")"
+
+# --- Read remote base URL from .repo ---
+REPO_CONFIG="${AGENT_SYSTEM_DIR}/.repo"
+if [[ ! -f "$REPO_CONFIG" ]]; then
+    echo "ERROR: .repo file not found at $REPO_CONFIG"
+    echo "       Create it with: echo 'remote=git@github.com:yourorg' > ${REPO_CONFIG}"
+    exit 1
+fi
+
+REMOTE=""
+while IFS='=' read -r key value; do
+    [[ -z "$key" || "$key" == \#* ]] && continue
+    if [[ "$key" == "remote" ]]; then
+        REMOTE="$value"
+    fi
+done < "$REPO_CONFIG"
+
+if [[ -z "$REMOTE" ]]; then
+    echo "ERROR: 'remote' not set in $REPO_CONFIG"
+    exit 1
+fi
+
+REPO_URL="${REMOTE}/${REPO_NAME}.git"
+
+# --- Determine clone directory ---
+if [[ -n "$FEATURE_NAME" ]]; then
+    CLONE_DIR="${WORKSPACE}/${REPO_NAME}-${FEATURE_NAME}"
+    if [[ -d "$CLONE_DIR" ]]; then
+        N=1
+        while [[ -d "${CLONE_DIR}-${N}" ]]; do
+            ((N++))
+        done
+        CLONE_DIR="${CLONE_DIR}-${N}"
+    fi
+else
+    N=1
+    while [[ -d "${WORKSPACE}/${REPO_NAME}-${N}" ]]; do
+        ((N++))
+    done
+    CLONE_DIR="${WORKSPACE}/${REPO_NAME}-${N}"
+fi
+
+# --- Clone ---
+echo "==> git clone $REPO_URL $CLONE_DIR"
+git clone "$REPO_URL" "$CLONE_DIR"
+cd "$CLONE_DIR"
+
+# --- Write agent session marker (before setup, so broken clones still show in status) ---
+AGENT_SESSION_FILE="${CLONE_DIR}/.agent-session"
+{
+    echo "state=cloned"
+    echo "repo=${REPO_NAME}"
+    echo "feature=${FEATURE_NAME}"
+    echo "agent="
+    echo "pid="
+    echo "started_at=$(date +%s)"
+} > "$AGENT_SESSION_FILE"
+
+# --- Setup ---
+if [[ -f "pyproject.toml" ]]; then
+    echo "==> Python project. Running uv sync ..."
+    uv sync
+fi
+
+# --- Copy env if it exists ---
+ENV_FILE="${AGENT_SYSTEM_DIR}/.env.${REPO_NAME}"
+if [[ -f "$ENV_FILE" ]]; then
+    echo "==> Copying env from $ENV_FILE ..."
+    cp "$ENV_FILE" "$CLONE_DIR/.env"
+fi
+
+# --- Copy vscode settings if they exist ---
+VSCODE_DIR="${AGENT_SYSTEM_DIR}/.vscode.${REPO_NAME}"
+if [[ -d "$VSCODE_DIR" ]]; then
+    echo "==> Copying vscode settings from $VSCODE_DIR ..."
+    mkdir -p "$CLONE_DIR/.vscode"
+    cp "$VSCODE_DIR"/* "$CLONE_DIR/.vscode/"
+fi
+
+# --- Done ---
+echo ""
+echo "============================================"
+echo "  Dir:     $CLONE_DIR"
+echo "  Branch:  main"
+echo "============================================"
