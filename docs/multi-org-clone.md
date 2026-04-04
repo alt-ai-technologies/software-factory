@@ -50,3 +50,24 @@ some-repo=git@github.com:my-other-org
 ## Open Questions
 
 None.
+
+## What to Test
+
+**Files changed:** `bin/clone`, `.gitignore`, `.repos.example`, `README.md`. Deleted: `.repo.example`.
+
+**Happy path:**
+- Create `.repos` with only `default=...` — `bin/clone <repo>` should use the default remote
+- Create `.repos` with `default=...` and `my-repo=...` — `bin/clone my-repo` should use the override; `bin/clone other-repo` should use the default
+- Comments (`#`) and blank lines in `.repos` should be ignored
+
+**Error cases:**
+- Missing `.repos` file — should get a clear error pointing to `.repos.example`
+- `.repos` exists but has no `default` line — should get `ERROR: 'default' not set`
+
+**Edge cases:**
+- Repo name that matches no override — falls back to default
+- Multiple overrides in the file — only the matching one is used
+
+**Docs:**
+- `README.md` setup instructions reference `.repos.example` / `.repos` (not `.repo`)
+- `.repos.example` has a working example with default + commented override
