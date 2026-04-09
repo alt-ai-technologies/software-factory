@@ -81,6 +81,13 @@ if [[ -f "$ENV_FILE" ]]; then
     cp "$ENV_FILE" "$CLONE_DIR/.env"
 fi
 
+# --- Copy MCP config if it exists ---
+MCP_FILE="${AGENT_SYSTEM_DIR}/.mcp.json.${REPO_NAME}"
+if [[ -f "$MCP_FILE" ]]; then
+    echo "==> Copying MCP config from $MCP_FILE ..."
+    cp "$MCP_FILE" "$CLONE_DIR/.mcp.json"
+fi
+
 # --- Copy vscode settings if they exist ---
 VSCODE_DIR="${AGENT_SYSTEM_DIR}/.vscode.${REPO_NAME}"
 if [[ -d "$VSCODE_DIR" ]]; then

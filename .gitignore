@@ -1,4 +1,5 @@
 .env*
+.mcp.json.*
 .vscode*
 .agent-session
 .repos
