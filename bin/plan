@@ -59,9 +59,9 @@ trap cleanup EXIT
 
 # --- Build user prompt ---
 if [[ -n "$FEATURE_NAME" ]]; then
-    USER_PROMPT="I want to plan '${FEATURE_NAME}'. The plan should end up at docs/${FEATURE_NAME}.md. Let's get started — what do you need to know?"
+    USER_PROMPT="I want to plan '${FEATURE_NAME}'. The plan should end up at plans/${FEATURE_NAME}.md. Let's get started — what do you need to know?"
 else
-    USER_PROMPT="I want to plan a feature. Before we start, ask me the name of what we're building. The plan should end up at docs/<feature-name>.md. Let's get started — what do you need to know?"
+    USER_PROMPT="I want to plan a feature. Before we start, ask me the name of what we're building. The plan should end up at plans/<feature-name>.md. Let's get started — what do you need to know?"
 fi
 
 echo "==> Starting plan session in $CLONE_DIR"

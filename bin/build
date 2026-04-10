@@ -65,7 +65,7 @@ claude \
     --permission-mode acceptEdits \
     --append-system-prompt "$(cat "$PROMPT_FILE")" \
     --allowedTools "$ALLOWED_TOOLS" \
-    "Look in the docs/ directory for the relevant feature spec. Read it, understand the codebase, and build the feature."
+    "Look in the plans/ directory for the relevant feature spec. Read it, understand the codebase, and build the feature."
 AGENT_EXIT_CODE=$?
 set -e
 
