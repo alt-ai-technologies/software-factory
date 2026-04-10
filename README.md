@@ -35,7 +35,7 @@ Works with any Python repo that uses [uv](https://docs.astral.sh/uv/) for depend
 ### Plan Agent
 - Interactive session where the human and agent plan a feature together
 - Reads the codebase to ask informed questions about boundaries and integrations
-- Writes the plan to `docs/` in the repo
+- Writes the plan to `plans/` in the repo
 - Gets peer review from Codex before committing
 - `bin/plan <clone-dir> [feature-name]`
 
@@ -78,7 +78,7 @@ bin/clone <repo-name> [feature-name]
 bin/plan <clone-dir> [feature-name]
 ```
 - Interactive conversation to plan the feature
-- Plan lands in `docs/<feature-name>.md`
+- Plan lands in `plans/<feature-name>.md`
 - Codex reviews the plan before commit
 
 ### 3. Build

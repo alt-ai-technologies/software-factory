@@ -29,7 +29,7 @@ These changes were made during the planning session because they're context-depe
 - Update README: agent descriptions (Task Agent → Hack Agent), workflow section (`bin/task` → `bin/hack`), file tree listing (`task` → `hack` in both `bin/` and `prompts/`)
 - Update `bin/status` references from `task` → `hack` (agent type display, coloring)
 - Update any references in `lib/agent-session.sh` or `lib/allowed-tools.sh` if they mention task
-- Update `docs/multi-org-clone.md` — references `bin/task` in its out-of-scope section
+- Update `plans/multi-org-clone.md` — references `bin/task` in its out-of-scope section
 
 ## Out of Scope
 
@@ -54,7 +54,7 @@ These changes were made during the planning session because they're context-depe
 
 ## What to Test
 
-**Files changed:** `bin/hack` (renamed from `bin/task`), `prompts/hack-agent.md` (renamed from `prompts/task-agent.md`), `README.md`, `docs/multi-org-clone.md`.
+**Files changed:** `bin/hack` (renamed from `bin/task`), `prompts/hack-agent.md` (renamed from `prompts/task-agent.md`), `README.md`, `plans/multi-org-clone.md`.
 
 **Happy path:**
 - Run `bin/hack <clone-dir>` — should launch a claude session with the hack agent prompt
@@ -71,7 +71,7 @@ These changes were made during the planning session because they're context-depe
 
 **Docs:**
 - README shows "Hack Agent" (not "Task Agent"), `bin/hack`, and `hack-agent.md` in file tree
-- `docs/multi-org-clone.md` references `bin/hack` (not `bin/task`)
+- `plans/multi-org-clone.md` references `bin/hack` (not `bin/task`)
 
 **Error case:**
 - Run `bin/hack` with no args — should show `Usage: hack <directory>`
