@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CLONE_DIR="${1:?Usage: plan-merge <clone-dir> <branch-a> <branch-b>}"
+BRANCH_A="${2:?Usage: plan-merge <clone-dir> <branch-a> <branch-b>}"
+BRANCH_B="${3:?Usage: plan-merge <clone-dir> <branch-a> <branch-b>}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+AGENT_SYSTEM_DIR="$(dirname "$SCRIPT_DIR")"
+WORKSPACE="$(dirname "$AGENT_SYSTEM_DIR")"
+PROMPT_FILE="${AGENT_SYSTEM_DIR}/prompts/plan-merge.md"
+
+# shellcheck source=../lib/allowed-tools.sh
+source "${AGENT_SYSTEM_DIR}/lib/allowed-tools.sh"
+
+# shellcheck source=../lib/agent-session.sh
+source "${AGENT_SYSTEM_DIR}/lib/agent-session.sh"
+
+# --- Resolve clone dir ---
+if [[ ! -d "$CLONE_DIR" ]] && [[ -d "${WORKSPACE}/${CLONE_DIR}" ]]; then
+    CLONE_DIR="${WORKSPACE}/${CLONE_DIR}"
+fi
+
+if [[ ! -d "$CLONE_DIR" ]]; then
+    echo "ERROR: Directory not found at $CLONE_DIR"
+    exit 1
+fi
+
+# Canonicalize to absolute path so cleanup works after cd
+CLONE_DIR="$(cd "$CLONE_DIR" && pwd)"
+
+if [[ ! -f "$PROMPT_FILE" ]]; then
+    echo "ERROR: Prompt not found at $PROMPT_FILE"
+    exit 1
+fi
+
+# --- Pre-flight checks (script-level, before launching claude) ---
+
+# Working tree must be clean
+if [[ -n "$(git -C "$CLONE_DIR" status --porcelain)" ]]; then
+    echo "ERROR: Working tree is not clean in $CLONE_DIR"
+    echo "       Commit or stash your changes before running plan-merge."
+    exit 1
+fi
+
+# Everything must be committed (no staged changes)
+if ! git -C "$CLONE_DIR" diff --cached --quiet; then
+    echo "ERROR: Staged changes exist in $CLONE_DIR"
+    echo "       Commit your staged changes before running plan-merge."
+    exit 1
+fi
+
+# Fetch origin to get latest refs
+echo "==> Fetching origin..."
+git -C "$CLONE_DIR" fetch origin
+
+# Validate both branches exist (locally or on remote)
+for BRANCH in "$BRANCH_A" "$BRANCH_B"; do
+    if ! git -C "$CLONE_DIR" rev-parse --verify "$BRANCH" >/dev/null 2>&1 && \
+       ! git -C "$CLONE_DIR" rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
+        echo "ERROR: Branch '$BRANCH' not found locally or on origin"
+        exit 1
+    fi
+done
+
+echo "==> Pre-flight checks passed"
+
+# --- Set tab title ---
+eval "$(read_agent_session "$CLONE_DIR")" 2>/dev/null || true
+TAB_LABEL="${SESSION_feature:-$(basename "$CLONE_DIR")}"
+set_tab_title "MERGE: ${TAB_LABEL}"
+
+# --- Update session marker to running ---
+write_agent_session "$CLONE_DIR" state=running agent=plan-merge "pid=$$" "started_at=$(date +%s)"
+
+# --- Trap: update marker and reset tab on exit ---
+AGENT_EXIT_CODE=0
+cleanup() {
+    if [[ "$AGENT_EXIT_CODE" -eq 0 ]]; then
+        write_agent_session "$CLONE_DIR" state=done "pid=" "finished_at=$(date +%s)"
+    else
+        write_agent_session "$CLONE_DIR" state=interrupted "pid=" "finished_at=$(date +%s)"
+    fi
+    reset_tab_title
+}
+trap cleanup EXIT
+
+# --- Launch ---
+echo "==> Starting merge planning session in $CLONE_DIR"
+echo "    Branch A: $BRANCH_A"
+echo "    Branch B: $BRANCH_B"
+echo ""
+
+cd "$CLONE_DIR"
+set +e
+claude \
+    --permission-mode acceptEdits \
+    --append-system-prompt "$(cat "$PROMPT_FILE")" \
+    --allowedTools "$GIT_TOOLS $GIT_C_TOOLS $SHELL_TOOLS $CODEX_TOOLS $FILE_TOOLS" \
+    "I need to merge two branches: '$BRANCH_A' and '$BRANCH_B'. Analyze both branches, understand what each one accomplished, and help me produce a convergence plan."
+AGENT_EXIT_CODE=$?
+set -e
+
+echo ""
+echo "==> Merge planning session ended."
