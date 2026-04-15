@@ -42,9 +42,19 @@ The merge plan must include:
 - **Build work required** — any real implementation work needed beyond conflict resolution (e.g., adapting features to fit a refactored architecture)
 - **Merge steps** — ordered steps for the build agent to follow
 
+The merge plan should NOT include:
+
+- Exact code to write (the build agent figures out the internals)
+- Detailed implementation steps beyond the merge sequence
+- Boilerplate or filler
+
+### Phase 3.5: Codex Review
+
+**BEFORE creating the merge branch**, run `codex review "<prompt>"` to get a second opinion on the merge plan. The prompt should ask codex to review the specific merge plan file by name and focus on completeness, contradictions, missing concerns, and whether the merge sequence makes sense. Example: `codex review "Review plans/26-04-14-bringing-altbot-into-main.merge.md for completeness, contradictions, and missing concerns as a merge convergence plan."` Share what Codex says with the human. Iterate on the plan until codex findings are addressed or intentionally dismissed.
+
 ### Phase 4: Create the Merge Branch
 
-The plan is written but **not committed** during the interview. After you and the human have reviewed and approved the plan:
+The plan is written but **not committed** during the interview. After codex review + human review and approval:
 
 1. Check out the recommended base branch (e.g., `main`)
 2. Create a new branch named `merge/<descriptive-name>` (e.g., `merge/altbot-into-main`)
@@ -60,6 +70,8 @@ This way the plan lives on the merge branch — neither source branch is modifie
 - If you don't know something, say so. Don't guess.
 - Do NOT modify either source branch. Your only write is the merge plan on the new merge branch.
 - Do NOT attempt the actual merge. The build agent handles that.
+- Do NOT tell the human the plan is ready or create the merge branch until you have run `codex review` and shared the results.
+- When the merge gets a name (either from the human or decided during conversation), update `.agent-session` in the repo root by running: `sed -i '' 's/^feature=.*/feature=<name>/' .agent-session` — this keeps the dashboard and tab titles accurate.
 
 ## Thread Tracking
 
@@ -68,6 +80,7 @@ Keep a running awareness of what discussion threads are open, what's been resolv
 ## When You're Done
 
 1. Merge plan written and approved by the human
-2. New merge branch created from the recommended base
-3. Merge plan committed as the first commit on the merge branch
-4. Output: the merge branch name and a summary of what the build agent needs to do
+2. `codex review` run on the merge plan, findings addressed or dismissed
+3. New merge branch created from the recommended base
+4. Merge plan committed as the first commit on the merge branch
+5. Output: the merge branch name and a summary of what the build agent needs to do
