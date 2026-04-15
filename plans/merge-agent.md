@@ -120,6 +120,38 @@ Branches are symmetric in invocation — order doesn't matter. The planner figur
 - The merge plan captures exact SHAs and merge base so the build agent works against the same state the planner analyzed.
 - Prompt file renames (`build-agent.md` → `build.md`, `hack-agent.md` → `hack.md`) bundled into this plan since they were done during the planning session.
 
+## What to Test
+
+### `bin/plan-merge` script
+- **Happy path:** Run `bin/plan-merge <clone-dir> main <feature-branch>` with both branches existing locally — should pass pre-flight and launch claude
+- **Clean tree check:** Make an uncommitted change in the clone, run `plan-merge` — should error before launching claude
+- **Staged changes check:** Stage a file without committing, run `plan-merge` — should error
+- **Missing branch:** Run with a branch name that doesn't exist locally or on origin — should error
+- **Remote-only branch:** Delete a local branch but keep its remote, run `plan-merge` — should create a local tracking branch and proceed
+- **Tab title:** Verify terminal tab shows `MERGE: <label>` during session
+- **Session marker:** Check `.agent-session` shows `agent=plan-merge` and correct states (running → done/interrupted)
+
+### `prompts/plan-merge.md` (merge planner prompt)
+- The four phases (Analysis, Interview, Write Plan, Create Merge Branch) are clearly described
+- Plan output format includes all required fields (branch names, SHAs, merge base, recommended base, etc.)
+- Rules prohibit modifying source branches or attempting the actual merge
+
+### `prompts/build.md` (merge-plan handling)
+- The "Handling Merge Plans" section instructs merging by SHA, not branch name
+- Pure conflict resolution skips test-first; real build work uses test-first
+- Merge commit comes first, then incremental build work
+
+### `lib/allowed-tools.sh`
+- `GIT_TOOLS` includes: `git fetch`, `git merge`, `git merge-base`, `git rev-list`, `git ls-tree`, `git merge-tree`
+- `GIT_C_TOOLS` includes the `-C` variants of all the above
+- `SHELL_TOOLS` includes `comm`
+
+### `README.md`
+- Merge Planner listed in "The Agents" section between Build Agent and Hack Agent
+- Workflow step 4 "Merge (when branches diverge)" with correct invocation
+- File tree includes `bin/plan-merge`, `prompts/plan-merge.md`
+- Permissions section lists the new git commands
+
 ## Open Questions
 
 None.
