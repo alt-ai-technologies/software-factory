@@ -128,8 +128,8 @@ agent-system/
 │   └── agent-session.sh    # Session tracking helpers
 ├── prompts/
 │   ├── plan.md             # Plan agent system prompt
-│   ├── build-agent.md      # Build agent system prompt
-│   └── hack-agent.md       # Hack agent system prompt
+│   ├── build.md             # Build agent system prompt
+│   └── hack.md              # Hack agent system prompt
 ├── .repos.example          # Example remote config (copy to .repos)
 └── .gitignore
 ```

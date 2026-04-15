@@ -26,7 +26,7 @@ fi
 CLONE_DIR="$(cd "$CLONE_DIR" && pwd)"
 
 # --- Prompt and tools ---
-PROMPT_FILE="${AGENT_SYSTEM_DIR}/prompts/build-agent.md"
+PROMPT_FILE="${AGENT_SYSTEM_DIR}/prompts/build.md"
 ALLOWED_TOOLS="$GIT_TOOLS $GIT_C_TOOLS $PYTHON_TOOLS $CODEX_TOOLS $SHELL_TOOLS $FILE_TOOLS"
 
 if [[ ! -f "$PROMPT_FILE" ]]; then

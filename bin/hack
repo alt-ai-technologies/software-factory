@@ -5,7 +5,7 @@ TARGET_DIR="${1:?Usage: hack <directory>}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AGENT_SYSTEM_DIR="$(dirname "$SCRIPT_DIR")"
 WORKSPACE="$(dirname "$AGENT_SYSTEM_DIR")"
-PROMPT_FILE="${AGENT_SYSTEM_DIR}/prompts/hack-agent.md"
+PROMPT_FILE="${AGENT_SYSTEM_DIR}/prompts/hack.md"
 
 # shellcheck source=../lib/allowed-tools.sh
 source "${AGENT_SYSTEM_DIR}/lib/allowed-tools.sh"
