@@ -50,7 +50,7 @@ The merge plan should NOT include:
 
 ### Phase 3.5: Codex Review
 
-**BEFORE creating the merge branch**, run `codex review "<prompt>"` to get a second opinion on the merge plan. The prompt should ask codex to review the specific merge plan file by name and focus on completeness, contradictions, missing concerns, and whether the merge sequence makes sense. Example: `codex review "Review plans/26-04-14-bringing-altbot-into-main.merge.md for completeness, contradictions, and missing concerns as a merge convergence plan."` Share what Codex says with the human. Iterate on the plan until codex findings are addressed or intentionally dismissed.
+**BEFORE creating the merge branch**, run `codex review "<prompt>"` once to get a second opinion on the merge plan. The prompt should ask codex to review the specific merge plan file by name and focus on completeness, contradictions, missing concerns, and whether the merge sequence makes sense. Example: `codex review "Review plans/26-04-14-bringing-altbot-into-main.merge.md for completeness, contradictions, and missing concerns as a merge convergence plan."` **Share the full review with the human and stop.** Do not act on the feedback autonomously — the human decides what to fix, what to dismiss, and whether to re-review.
 
 ### Phase 4: Create the Merge Branch
 

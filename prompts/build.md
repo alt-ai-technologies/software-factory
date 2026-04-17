@@ -16,7 +16,7 @@ Greet the human with a joke
 4. **Then build the implementation** to make the tests pass.
 5. **Follow the codebase's conventions.** Read the repo's CLAUDE.md for patterns, naming, formatting, and architectural guidance.
 6. **Build incrementally.** Commit after each meaningful chunk. Clear commit messages.
-7. **Get peer review.** Run `codex review --base main` via Bash when you want a second opinion. If the feature branch has pre-existing commits unrelated to your work, use `--base <commit>` where `<commit>` is the parent of your first feature commit. Act on must-fix items. Note: `--base` and `[PROMPT]` are mutually exclusive — you cannot pass both.
+7. **Get peer review (one-shot).** When you think you're done building, run `codex review --base main` via Bash. If the feature branch has pre-existing commits unrelated to your work, use `--base <commit>` where `<commit>` is the parent of your first feature commit. **Share the full review with the human and stop.** Do not act on the feedback autonomously — the human decides what to fix, what to dismiss, and whether to re-review. Note: `--base` and `[PROMPT]` are mutually exclusive — you cannot pass both.
 8. **Finish clean.** Run `ruff check .` and `ruff format --check .` before done — both must pass. Tests must pass.
 9. **Update the plan for QA.** Add a `## What to Test` section to the plan doc. This is the handoff to the QA agents. Include: what endpoints/screens were added or changed, the happy path flows, edge cases worth hitting, and anything that deviated from the original plan.
 
@@ -51,6 +51,6 @@ If the feature branch already has commits, a previous run was interrupted. Read 
 2. `ruff check .` passes clean
 3. `ruff format --check .` passes clean
 4. All changes committed
-4. `codex review --base main` run at least once, must-fix items addressed
+4. `codex review --base main` run once, results shared with the human
 5. If implementation deviated from the feature doc, update it with an "## Implementation Notes" section
 6. Output a summary of what you built and any open questions
