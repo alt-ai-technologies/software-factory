@@ -1,19 +1,36 @@
-# Agent Coding System
+# Software Factory
 
-## The Big Idea
+A machine that builds software.
 
-Ephemeral repos. Cattle not pets. Every feature gets its own clone, its own workspace, its own agent. When the feature merges, the repo gets nuked. The remote is the only source of truth — everything local is disposable.
+Decompose the work of building software into discrete phases with clear handoffs. Each phase has an explicit driver — either a human or an agent — and the other plays a supporting role. The more discrete the phases, the more independently each can be optimized, measured, and progressively automated.
 
-Works with any Python repo that uses [uv](https://docs.astral.sh/uv/) for dependency management.
+## The pipeline
+
+Every feature flows through: **Define → Build → Test**
+
+Each phase reads instructions from the previous phase, does its work, and writes instructions for the next. The plan file is the medium.
+
+<p align="center">
+  <img src="docs/pipeline.svg" alt="Software Factory pipeline" width="690" />
+</p>
+
+| Phase | Driver | Supporting | What happens |
+|-------|--------|------------|--------------|
+| **Define** | Human | Interviewer Agent | Human decides what to build. Agent interviews, challenges, reads the codebase, produces the plan. |
+| **Build** | Agent | Human (on call) | Build Agent picks up the plan, writes tests first, builds the implementation. Human handles judgment calls. |
+| **Test** | Human | Domain QA Agent | Human judges the work against the plan. Domain QA (built in the target repo) progressively automates. |
+| **Merge** | Agent | Human (on call) | When branches diverge. Merge Agent reads plans and code from both sides, produces a convergence plan. |
+
+For the full design philosophy, see [docs/design.md](docs/design.md).
 
 ## Setup
 
 1. Clone this repo alongside your project repos:
    ```
    workspace/
-   ├── agent-system/      # this repo
-   ├── my-app-feature-1/  # ephemeral clone (created by bin/clone)
-   └── my-app-feature-2/  # another ephemeral clone
+   ├── software-factory/    # this repo
+   ├── my-app-feature-1/    # ephemeral clone (created by bin/clone)
+   └── my-app-feature-2/    # another ephemeral clone
    ```
 
 2. Configure git remotes:
@@ -30,98 +47,56 @@ Works with any Python repo that uses [uv](https://docs.astral.sh/uv/) for depend
 
 4. Your target repo should have a `CLAUDE.md` with codebase conventions (framework patterns, naming, formatting rules, etc.). The agents read this to understand how to write code that fits.
 
-## The Agents
+## Commands
 
-### Plan Agent
-- Interactive session where the human and agent plan a feature together
-- Reads the codebase to ask informed questions about boundaries and integrations
-- Writes the plan to `plans/` in the repo
-- Gets peer review from Codex before committing
-- `bin/plan <clone-dir> [feature-name]`
-
-### Build Agent
-- Gets a plan describing what to build
-- Works in its own ephemeral clone
-- Pings Codex for peer review via `codex review --base main`
-- **Acts on feedback** — from the peer reviewer or the human. The build agent is the one who fixes the code.
-- **Keeps the plan up to date** — if the design shifts during the build, the plan gets updated
-- Builds incrementally — commits after each meaningful chunk
-- Does NOT push — the human reviews commits and pushes when ready
-- Test-first with fakes, then implementation. Must pass `ruff check` + `ruff format` + `pytest`
-- `bin/build <clone-dir>`
-
-### Merge Planner
-- Domain reconciliation agent for bringing two diverged branches back together
-- Reads plans, commit messages, and code from both sides to understand *intent*, not just conflicts
-- Interviews the human about overlaps and produces a convergence plan (`.merge.md`)
-- Recommends which branch should be the base, grounded in domain understanding
-- Creates a merge branch with the plan — neither source branch is modified
-- The build agent picks up the `.merge.md` plan and executes it
-- `bin/plan-merge <clone-dir> <branch-a> <branch-b>`
-
-### Hack Agent
-- For exploratory work, debugging, UI iteration, and small changes that don't need a plan doc
-- Interactive conversation to design the approach, then autonomous build
-- `bin/hack <clone-dir>`
-
-### Peer Reviewer (Codex)
-- A different frontier model — different strengths, different blind spots, that's the point
-- Invoked as `codex review --base main` by the build agent or plan agent
-- Reviews code with a fresh perspective, asks for revisions
-- The build agent acts on them, or escalates to the human if there's a disagreement
-
-## The Workflow
-
-### 1. Clone
+### Clone
 ```bash
 bin/clone <repo-name> [feature-name]
 ```
-- Clones into `<repo-name>-<feature-name>/` (or `<repo-name>-1/`, `<repo-name>-2/` if no feature name)
-- Stays on main
-- Runs `uv sync` if `pyproject.toml` exists
-- Copies `.env` from `agent-system/.env.<repo-name>` if it exists
-- Copies `.vscode` settings from `agent-system/.vscode.<repo-name>/` if they exist
+Creates an ephemeral clone. Runs `uv sync` if Python, copies `.env` and `.vscode` settings if configured.
 
-### 2. Plan
+### Define
 ```bash
 bin/plan <clone-dir> [feature-name]
 ```
-- Interactive conversation to plan the feature
-- Plan lands in `plans/<feature-name>.md`
-- Codex reviews the plan before commit
+Interactive session. The Interviewer Agent reads the codebase, asks non-obvious questions, and produces a plan in `plans/`. Gets a second opinion from the Review Tool before committing.
 
-### 3. Build
+### Build
 ```bash
 bin/build <clone-dir>
 ```
-- Build agent reads the plan, reads the codebase, builds the thing
-- Commits incrementally, consults Codex for review
-- Human reviews commits when done: `git log --oneline main..HEAD`
-- Human pushes when satisfied: `git push`
+The Build Agent reads the plan, writes tests first, builds the implementation, commits incrementally. Uses the Review Tool to catch issues before escalating. Updates the plan with implementation notes and a "What to Test" section for the Test phase.
 
-### 4. Merge (when branches diverge)
+### Merge
 ```bash
 bin/plan-merge <clone-dir> <branch-a> <branch-b>
 ```
-- Analyzes both branches — reads plans, diffs, commit messages
-- Interviews you about overlaps and how to bring them together
-- Writes a convergence plan to `plans/<date>-<name>.merge.md`
-- Creates a merge branch; run `bin/build` on it to execute the plan
+The Merge Agent analyzes both branches — reads plans, diffs, and commit messages to understand intent. Produces a convergence plan (`.merge.md`), then `bin/build` executes it.
 
-### 5. Status
+### Hack
 ```bash
-bin/status
+bin/hack <clone-dir>
 ```
-- Shows all active ephemeral clones, their agent state, and progress
+For work that doesn't need a plan in git — debugging, iteration, small fixes. Human and agent collaborate in a single session.
 
-### 6. Nuke
+### Status & Cleanup
 ```bash
-bin/clone-nuke <clone-dir>            # check + delete
-bin/clone-nuke <clone-dir> --check    # check only, no delete
+bin/status                          # dashboard of active clones
+bin/clone-nuke <clone-dir>          # safely delete a clone
+bin/clone-nuke <clone-dir> --check  # check if nukable without deleting
 ```
-- Runs safety checks before deleting: git repo, `.agent-session` present, not detached HEAD, clean tree, no untracked files, all branches pushed, no stashes
-- If any check fails, prints what failed and exits non-zero
-- `--check` answers "is this nukable?" without deleting
+
+## How it works
+
+**The plan is the handoff.** Define writes instructions for Build. Build writes instructions for Test. Merge writes instructions for the merge builder. The format is a markdown file in `plans/`. The content changes meaning at each handoff.
+
+**Authority inverts between phases.** In Define, the human is in charge and the agent serves. In Build, the agent is in charge and the human serves. This is deliberate — human attention goes where it's most valuable (deciding what to build), agent autonomy goes where it's most efficient (actually building it).
+
+**The Review Tool is infrastructure.** A different model (currently Codex) providing a second opinion. Any agent can invoke it. The driving agent decides how to filter and present the findings — the Review Tool never talks to the human directly.
+
+**Ephemeral repos are load-bearing.** Every feature gets its own clone. Cattle, not pets. This means features build in parallel, bad builds get thrown away, and the merge path exists because branches are genuinely independent. The human pushes when satisfied — agents cannot push.
+
+**Progressive automation is the meta-game.** Every phase is a discrete box — a separate prompt, evaluation surface, and automation candidate. The Domain QA Agent (built in the target repo, not here) is the clearest example: it starts thin and absorbs more of what the human tester does over time. The boundary between human and agent is discovered through operation, not designed upfront.
 
 ## Permissions
 
@@ -130,40 +105,35 @@ No `--dangerously-skip-permissions`. Agents get explicit `--allowedTools`:
 - **File ops:** `Edit`, `Write`, `Read`, `Glob`, `Grep`
 - **Git:** specific commands only — `add`, `commit`, `diff`, `log`, `status`, `branch`, `checkout`, `show`, `stash`, `rev-parse`, `fetch`, `merge`, `merge-base`, `rev-list`, `ls-tree`, `merge-tree`. No `push`, no `reset`, no `remote`.
 - **Build tools:** `uv`, `ruff`, `python`, `pytest`
-- **Peer review:** `codex review` only
+- **Review:** `codex review` only
 - **Shell:** `ls`, `cat`, `head`, `tail`, `grep`, `find`, `tree`, `sed`, `awk`, etc.
 
 Tool definitions live in `lib/allowed-tools.sh`.
 
-## File Structure
+## File structure
 
 ```
-agent-system/
+software-factory/
 ├── bin/
 │   ├── clone           # Clone repo, setup env and vscode
-│   ├── plan            # Launch plan agent
-│   ├── plan-merge      # Launch merge planner
-│   ├── build           # Launch build agent (handles both feature and merge plans)
-│   ├── hack            # Launch hack agent
-│   ├── status          # Show active features dashboard
+│   ├── plan            # Launch interviewer agent (Define phase)
+│   ├── build           # Launch build agent (handles feature and merge plans)
+│   ├── plan-merge      # Launch merge agent
+│   ├── hack            # Launch hack mode
+│   ├── status          # Show active clones dashboard
 │   └── clone-nuke      # Safely delete ephemeral clones
 ├── lib/
 │   ├── allowed-tools.sh    # Shared tool permission definitions
 │   └── agent-session.sh    # Session tracking helpers
 ├── prompts/
-│   ├── plan.md             # Plan agent system prompt
-│   ├── plan-merge.md       # Merge planner system prompt
-│   ├── build.md            # Build agent system prompt
-│   └── hack.md             # Hack agent system prompt
+│   ├── plan.md             # Interviewer agent prompt (Define)
+│   ├── build.md            # Build agent prompt
+│   ├── plan-merge.md       # Merge agent prompt
+│   └── hack.md             # Hack mode prompt
+├── plans/                  # Feature and merge plans
+├── docs/
+│   ├── design.md           # Full design philosophy
+│   └── pipeline.svg        # Pipeline diagram
 ├── .repos.example          # Example remote config (copy to .repos)
-└── .gitignore
+└── CLAUDE.md
 ```
-
-## Key Principles
-
-- **The human is not the bottleneck.** Agents consult Codex before escalating.
-- **Different models for different perspectives.** Cross-model review catches what same-model review misses.
-- **Accept imperfect, focus on integrations.** If the boundaries are right, the internals are fixable. If the integrations are wrong, that's expensive.
-- **The plan is the handoff, not a perfect spec.** The conversation produces shared understanding. The plan captures the key decisions and boundaries. The agent figures out the rest.
-- **Everything local is disposable.** The remote is the source of truth. Repos are cattle, not pets.
-- **Codebase conventions belong in the target repo.** The agent prompts handle process and behavior. Your repo's `CLAUDE.md` handles how to write code that fits.
