@@ -67,6 +67,12 @@ bin/build <clone-dir>
 ```
 The Build Agent reads the plan, writes tests first, builds the implementation, commits incrementally. Uses the Review Tool to catch issues before escalating. Updates the plan with implementation notes and a "What to Test" section for the Test phase.
 
+### Review
+```bash
+bin/review <clone-dir>
+```
+Human reviews a plan with a neutral thinking partner. The Review Agent summarizes the plan, interviews the human about their concerns, and traces implications through the codebase. Output is plan updates or appended review notes.
+
 ### Merge
 ```bash
 bin/plan-merge <clone-dir> <branch-a> <branch-b>
@@ -117,6 +123,7 @@ software-factory/
 ├── bin/
 │   ├── clone           # Clone repo, setup env and vscode
 │   ├── plan            # Launch interviewer agent (Define phase)
+│   ├── review          # Launch review agent (plan feedback)
 │   ├── build           # Launch build agent (handles feature and merge plans)
 │   ├── plan-merge      # Launch merge agent
 │   ├── hack            # Launch hack mode
@@ -127,6 +134,7 @@ software-factory/
 │   └── agent-session.sh    # Session tracking helpers
 ├── prompts/
 │   ├── plan.md             # Interviewer agent prompt (Define)
+│   ├── review.md           # Review agent prompt
 │   ├── build.md            # Build agent prompt
 │   ├── plan-merge.md       # Merge agent prompt
 │   └── hack.md             # Hack mode prompt
