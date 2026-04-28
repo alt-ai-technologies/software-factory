@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CLONE_DIR="${1:?Usage: review <clone-dir>}"
+CLONE_DIR="${1:?Usage: plan-review <clone-dir>}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AGENT_SYSTEM_DIR="$(dirname "$SCRIPT_DIR")"
 WORKSPACE="$(dirname "$AGENT_SYSTEM_DIR")"
-PROMPT_FILE="${AGENT_SYSTEM_DIR}/prompts/review.md"
+PROMPT_FILE="${AGENT_SYSTEM_DIR}/prompts/plan-review.md"
 
 # shellcheck source=../lib/allowed-tools.sh
 source "${AGENT_SYSTEM_DIR}/lib/allowed-tools.sh"
@@ -34,10 +34,10 @@ fi
 # --- Set tab title ---
 eval "$(read_agent_session "$CLONE_DIR")" 2>/dev/null || true
 TAB_LABEL="${SESSION_feature:-$(basename "$CLONE_DIR")}"
-set_tab_title "REVIEW: ${TAB_LABEL}"
+set_tab_title "PLAN-REVIEW: ${TAB_LABEL}"
 
 # --- Update session marker to running ---
-write_agent_session "$CLONE_DIR" state=running agent=review "pid=$$" "started_at=$(date +%s)"
+write_agent_session "$CLONE_DIR" state=running agent=plan-review "pid=$$" "started_at=$(date +%s)"
 
 # --- Trap: update marker and reset tab on exit ---
 AGENT_EXIT_CODE=0
@@ -52,7 +52,7 @@ cleanup() {
 trap cleanup EXIT
 
 # --- Launch ---
-echo "==> Starting review session in $CLONE_DIR"
+echo "==> Starting plan-review session in $CLONE_DIR"
 echo ""
 
 cd "$CLONE_DIR"

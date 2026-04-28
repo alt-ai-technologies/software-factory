@@ -67,11 +67,17 @@ bin/build <clone-dir>
 ```
 The Build Agent reads the plan, writes tests first, builds the implementation, commits incrementally. Uses the Review Tool to catch issues before escalating. Updates the plan with implementation notes and a "What to Test" section for the Test phase.
 
-### Review
+### Plan Review
 ```bash
-bin/review <clone-dir>
+bin/plan-review <clone-dir>
 ```
 Human reviews a plan with a neutral thinking partner. The Review Agent summarizes the plan, interviews the human about their concerns, and traces implications through the codebase. Output is plan updates or appended review notes.
+
+### Build Review
+```bash
+bin/build-review <clone-dir>
+```
+Human reviews completed build work with a neutral thinking partner. The Build Review Agent reads the diff and (optionally) the original plan, summarizes what was asked for vs what was built, and interviews the human about their concerns. Flexible input — branch diffs, commit ranges, or already-merged work.
 
 ### Merge
 ```bash
@@ -123,7 +129,8 @@ software-factory/
 ├── bin/
 │   ├── clone           # Clone repo, setup env and vscode
 │   ├── plan            # Launch interviewer agent (Define phase)
-│   ├── review          # Launch review agent (plan feedback)
+│   ├── plan-review     # Launch plan review agent (plan feedback)
+│   ├── build-review    # Launch build review agent (build feedback)
 │   ├── build           # Launch build agent (handles feature and merge plans)
 │   ├── plan-merge      # Launch merge agent
 │   ├── hack            # Launch hack mode
@@ -134,7 +141,8 @@ software-factory/
 │   └── agent-session.sh    # Session tracking helpers
 ├── prompts/
 │   ├── plan.md             # Interviewer agent prompt (Define)
-│   ├── review.md           # Review agent prompt
+│   ├── plan-review.md      # Plan review agent prompt
+│   ├── build-review.md     # Build review agent prompt
 │   ├── build.md            # Build agent prompt
 │   ├── plan-merge.md       # Merge agent prompt
 │   └── hack.md             # Hack mode prompt
