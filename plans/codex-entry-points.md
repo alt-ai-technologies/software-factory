@@ -110,3 +110,21 @@ Use shell syntax checks and temporary smoke checks; do not introduce a test suit
 ## Open Questions
 
 None currently. Prompt refinements will follow actual use.
+
+## Implementation Notes
+
+- Added all six executable launchers and their independent prompt variants. `lib/codex-launch.sh` validates inputs, resolves the target directory, and passes the prompt plus opening task as one literal argument to interactive Codex. It sets no Codex configuration flags.
+- Extracted the existing merge checks into `lib/merge-preflight.sh`, used by both merge launchers. The original Claude launcher retains its prompt, permission arguments, session marker behavior, and terminal output.
+- Codex build and hack prompts record the starting HEAD so reviews can include the new commits when the human chooses to work on main. Planning uses only a focused design review, resolving the original prompt's conflicting review requirements.
+- Bash syntax checks passed across `bin/` and `lib/`; git whitespace checks passed. A temporary smoke-check script passed 28 groups covering all role starts, argument validation, path resolution, literal prompt handling, inherited settings, exit statuses, session-marker preservation, and real git merge preflight in disposable local repositories.
+- Smoke checks used stand-in Codex and Claude executables, with no test files added to the repository. Actual interactive conversations and per-user Codex configurations still need validation through use.
+
+## What to Test
+
+- Run `bin/plan-codex <clone-dir> <feature-name>` and the form without a feature name. Confirm Codex starts in the intended repo, follows the interviewing workflow, and writes its plan under that repo's `plans/`. Try an absolute path, a sibling clone name, and a quoted path containing spaces.
+- Start `build-codex`, `hack-codex`, `plan-review-codex`, and `build-review-codex` in disposable work. Confirm their opening tasks and role behavior: build executes the selected plan, hack waits for design approval, and review roles help the human assess the agreed target.
+- Confirm your usual Codex model, permissions, and integrations are used. Verify that starting and exiting a Codex role neither creates nor updates `.agent-session` or terminal titles.
+- Run `plan-merge-codex` in a clean disposable clone with two branches, including a branch initially present only on origin. Confirm the preflight completes and the agent receives both branch names. Dirty work, failed fetches, and missing branches must prevent the agent from launching.
+- Paste a prompt directly into a Codex session, or ask Codex to read its file. Confirm no factory marker is needed. For merge planning, supply the branch names and verify it establishes preflight state before analysis.
+- Exercise the review handoff: required roles run one review and stop after presenting all findings; hack and the two interactive review roles invoke the subprocess only when asked. Check that reviews of work committed directly on main include those commits.
+- After using the Codex merge launcher, confirm the existing `bin/plan-merge` still provides its normal Claude session and tracking behavior.

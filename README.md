@@ -49,6 +49,32 @@ For the full design philosophy, see [docs/design.md](docs/design.md).
 
 ## Commands
 
+### Choose Claude or Codex
+
+The original role commands launch Claude. Add the `-codex` suffix to start an interactive Codex session with the same arguments:
+
+| Claude | Codex | Arguments |
+|--------|-------|-----------|
+| `bin/plan` | `bin/plan-codex` | `<clone-dir> [feature-name]` |
+| `bin/build` | `bin/build-codex` | `<clone-dir>` |
+| `bin/hack` | `bin/hack-codex` | `<directory>` |
+| `bin/plan-review` | `bin/plan-review-codex` | `<clone-dir>` |
+| `bin/build-review` | `bin/build-review-codex` | `<clone-dir>` |
+| `bin/plan-merge` | `bin/plan-merge-codex` | `<clone-dir> <branch-a> <branch-b>` |
+
+For example:
+
+```bash
+bin/plan-codex my-app-feature-1 new-feature
+bin/build-codex my-app-feature-1
+```
+
+Have `codex` installed, authenticated, and configured as you normally use it. The launchers inherit your Codex model, reasoning, permissions, sandbox, and integrations. They select the target directory and supply the role prompt plus the opening task. Direct paths and sibling clone names both work.
+
+Codex prompts live in `prompts/codex/` and can be tuned independently. You can also paste one into a Codex session or ask the agent to read it, for example: “Read `/path/to/software-factory/prompts/codex/plan.md` and use that workflow to help me plan this feature.” Start the session in the target repository. Follow its `AGENTS.md` guidance and any conventions in `CLAUDE.md`.
+
+Codex launchers do not update `.agent-session` or terminal titles. `bin/status` does not report their activity; an existing clone marker continues to reflect its previous factory state. Clone creation and cleanup still use their existing rules.
+
 ### Clone
 ```bash
 bin/clone <repo-name> [feature-name]
@@ -104,15 +130,15 @@ bin/clone-nuke <clone-dir> --check  # check if nukable without deleting
 
 **Authority inverts between phases.** In Define, the human is in charge and the agent serves. In Build, the agent is in charge and the human serves. This is deliberate — human attention goes where it's most valuable (deciding what to build), agent autonomy goes where it's most efficient (actually building it).
 
-**The Review Tool is infrastructure.** A different model (currently Codex) providing a second opinion. Any agent can invoke it. The driving agent decides how to filter and present the findings — the Review Tool never talks to the human directly.
+**The Review Tool is infrastructure.** `codex review` provides a separate second opinion for both Claude and Codex sessions; the reviewer may use the same model as the driving agent. Review is required for planning, building, and merge planning, and available on request for hack and the interactive review roles. The agent shares the full review and stops for the human to decide what to fix, dismiss, or re-review.
 
-**Ephemeral repos are load-bearing.** Every feature gets its own clone. Cattle, not pets. This means features build in parallel, bad builds get thrown away, and the merge path exists because branches are genuinely independent. The human pushes when satisfied — agents cannot push.
+**Ephemeral repos are load-bearing.** Every feature gets its own clone. Cattle, not pets. This means features build in parallel, bad builds get thrown away, and the merge path exists because branches are genuinely independent. The human pushes when satisfied.
 
 **Progressive automation is the meta-game.** Every phase is a discrete box — a separate prompt, evaluation surface, and automation candidate. The Domain QA Agent (built in the target repo, not here) is the clearest example: it starts thin and absorbs more of what the human tester does over time. The boundary between human and agent is discovered through operation, not designed upfront.
 
 ## Permissions
 
-No `--dangerously-skip-permissions`. Agents get explicit `--allowedTools`:
+The Claude launchers use explicit `--allowedTools`, without `--dangerously-skip-permissions`:
 
 - **File ops:** `Edit`, `Write`, `Read`, `Glob`, `Grep`
 - **Git:** specific commands only — `add`, `commit`, `diff`, `log`, `status`, `branch`, `checkout`, `show`, `stash`, `rev-parse`, `fetch`, `merge`, `merge-base`, `rev-list`, `ls-tree`, `merge-tree`. No `push`, no `reset`, no `remote`.
@@ -121,6 +147,8 @@ No `--dangerously-skip-permissions`. Agents get explicit `--allowedTools`:
 - **Shell:** `ls`, `cat`, `head`, `tail`, `grep`, `find`, `tree`, `sed`, `awk`, etc.
 
 Tool definitions live in `lib/allowed-tools.sh`.
+
+Codex launchers inherit your normal Codex permissions and do not translate this allowlist. Their prompts keep the factory convention that the human pushes, while actual command permissions come from your Codex configuration.
 
 ## File structure
 
@@ -134,18 +162,27 @@ software-factory/
 │   ├── build           # Launch build agent (handles feature and merge plans)
 │   ├── plan-merge      # Launch merge agent
 │   ├── hack            # Launch hack mode
+│   ├── plan-codex      # Codex versions use the same arguments
+│   ├── build-codex
+│   ├── hack-codex
+│   ├── plan-review-codex
+│   ├── build-review-codex
+│   ├── plan-merge-codex
 │   ├── status          # Show active clones dashboard
 │   └── clone-nuke      # Safely delete ephemeral clones
 ├── lib/
 │   ├── allowed-tools.sh    # Shared tool permission definitions
-│   └── agent-session.sh    # Session tracking helpers
+│   ├── agent-session.sh    # Session tracking helpers (Claude launchers)
+│   ├── codex-launch.sh     # Shared Codex startup
+│   └── merge-preflight.sh  # Shared merge planner checks
 ├── prompts/
 │   ├── plan.md             # Interviewer agent prompt (Define)
 │   ├── plan-review.md      # Plan review agent prompt
 │   ├── build-review.md     # Build review agent prompt
 │   ├── build.md            # Build agent prompt
 │   ├── plan-merge.md       # Merge agent prompt
-│   └── hack.md             # Hack mode prompt
+│   ├── hack.md             # Hack mode prompt
+│   └── codex/              # Independent Codex variants of all six prompts
 ├── plans/                  # Feature and merge plans
 ├── docs/
 │   ├── design.md           # Full design philosophy
