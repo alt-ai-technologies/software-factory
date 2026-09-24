@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CLONE_DIR="${1:?Usage: plan-review-codex <clone-dir>}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# shellcheck source=../lib/codex-launch.sh
+source "${SCRIPT_DIR}/../lib/codex-launch.sh"
+prepare_codex_session plan-review "$CLONE_DIR"
+launch_codex "I want to review a plan. Which plans are available in plans/?"

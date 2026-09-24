@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CLONE_DIR="${1:?Usage: build-codex <clone-dir>}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# shellcheck source=../lib/codex-launch.sh
+source "${SCRIPT_DIR}/../lib/codex-launch.sh"
+prepare_codex_session build "$CLONE_DIR"
+launch_codex "Look in the plans/ directory for the relevant feature spec. Read it, understand the codebase, and build the feature."

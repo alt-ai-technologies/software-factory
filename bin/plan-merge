@@ -33,40 +33,9 @@ if [[ ! -f "$PROMPT_FILE" ]]; then
     exit 1
 fi
 
-# --- Pre-flight checks (script-level, before launching claude) ---
-
-# Working tree must be clean
-if [[ -n "$(git -C "$CLONE_DIR" status --porcelain)" ]]; then
-    echo "ERROR: Working tree is not clean in $CLONE_DIR"
-    echo "       Commit or stash your changes before running plan-merge."
-    exit 1
-fi
-
-# Everything must be committed (no staged changes)
-if ! git -C "$CLONE_DIR" diff --cached --quiet; then
-    echo "ERROR: Staged changes exist in $CLONE_DIR"
-    echo "       Commit your staged changes before running plan-merge."
-    exit 1
-fi
-
-# Fetch origin to get latest refs
-echo "==> Fetching origin..."
-git -C "$CLONE_DIR" fetch origin
-
-# Validate both branches exist — create local tracking branches for remote-only refs
-for BRANCH in "$BRANCH_A" "$BRANCH_B"; do
-    if git -C "$CLONE_DIR" rev-parse --verify "$BRANCH" >/dev/null 2>&1; then
-        continue  # exists locally
-    elif git -C "$CLONE_DIR" rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
-        echo "==> Creating local tracking branch for $BRANCH"
-        git -C "$CLONE_DIR" branch "$BRANCH" "origin/$BRANCH"
-    else
-        echo "ERROR: Branch '$BRANCH' not found locally or on origin"
-        exit 1
-    fi
-done
-
-echo "==> Pre-flight checks passed"
+# shellcheck source=../lib/merge-preflight.sh
+source "${AGENT_SYSTEM_DIR}/lib/merge-preflight.sh"
+merge_preflight "$CLONE_DIR" "$BRANCH_A" "$BRANCH_B"
 
 # --- Set tab title ---
 eval "$(read_agent_session "$CLONE_DIR")" 2>/dev/null || true

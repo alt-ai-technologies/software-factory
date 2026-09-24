@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TARGET_DIR="${1:?Usage: hack-codex <directory>}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# shellcheck source=../lib/codex-launch.sh
+source "${SCRIPT_DIR}/../lib/codex-launch.sh"
+prepare_codex_session hack "$TARGET_DIR"
+launch_codex "I'm here to hack on this repo. Ask me what I want to do."

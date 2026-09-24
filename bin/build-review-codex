@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CLONE_DIR="${1:?Usage: build-review-codex <clone-dir>}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# shellcheck source=../lib/codex-launch.sh
+source "${SCRIPT_DIR}/../lib/codex-launch.sh"
+prepare_codex_session build-review "$CLONE_DIR"
+launch_codex "I want to review a build. What should I look at? (e.g., diff against main, a commit range, two branches)"

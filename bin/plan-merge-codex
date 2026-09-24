@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CLONE_DIR="${1:?Usage: plan-merge-codex <clone-dir> <branch-a> <branch-b>}"
+BRANCH_A="${2:?Usage: plan-merge-codex <clone-dir> <branch-a> <branch-b>}"
+BRANCH_B="${3:?Usage: plan-merge-codex <clone-dir> <branch-a> <branch-b>}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# shellcheck source=../lib/codex-launch.sh
+source "${SCRIPT_DIR}/../lib/codex-launch.sh"
+# shellcheck source=../lib/merge-preflight.sh
+source "${SCRIPT_DIR}/../lib/merge-preflight.sh"
+
+prepare_codex_session plan-merge "$CLONE_DIR"
+merge_preflight "$CODEX_TARGET_DIR" "$BRANCH_A" "$BRANCH_B"
+launch_codex "I need to merge two branches: '$BRANCH_A' and '$BRANCH_B'. Analyze both branches, understand what each one accomplished, and help me produce a convergence plan."
